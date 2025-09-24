@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,6 +5,78 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model Task {
+  id           String       @id @default(uuid()) @map("bytebot_task_id")
+  description  String       @map("bytebot_description")
+  type         TaskType     @default(IMMEDIATE) @map("bytebot_type")
+  status       TaskStatus   @default(PENDING) @map("bytebot_status")
+  priority     TaskPriority @default(MEDIUM) @map("bytebot_priority")
+  control      Role         @default(ASSISTANT) @map("bytebot_control")
+  createdAt    DateTime     @default(now()) @map("bytebot_created_at")
+  createdBy    Role         @default(USER) @map("bytebot_created_by")
+  scheduledFor DateTime?    @map("bytebot_scheduled_for")
+  updatedAt    DateTime     @updatedAt @map("bytebot_updated_at")
+  executedAt   DateTime?    @map("bytebot_executed_at")
+  completedAt  DateTime?    @map("bytebot_completed_at")
+  queuedAt     DateTime?    @map("bytebot_queued_at")
+  error        String?      @map("bytebot_error")
+  result       Json?        @map("bytebot_result")
+  model        Json         @map("bytebot_model")
+  files        File[]
+  messages     Message[]
+  summaries    Summary[]
+
+  @@map("bytebot_tasks")
+}
+
+model Summary {
+  id             String    @id @default(uuid()) @map("bytebot_summary_id")
+  content        String    @map("bytebot_content")
+  createdAt      DateTime  @default(now()) @map("bytebot_created_at")
+  updatedAt      DateTime  @updatedAt @map("bytebot_updated_at")
+  taskId         String    @map("bytebot_task_id")
+  parentId       String?   @map("bytebot_parent_id")
+  messages       Message[]
+  parentSummary  Summary?  @relation("SummaryHierarchy", fields: [parentId], references: [id])
+  childSummaries Summary[] @relation("SummaryHierarchy")
+  task           Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([parentId], map: "bytebot_summaries_bytebot_parent_id_fkey")
+  @@index([taskId], map: "bytebot_summaries_bytebot_task_id_fkey")
+  @@map("bytebot_summaries")
+}
+
+model Message {
+  id        String   @id @default(uuid()) @map("bytebot_message_id")
+  content   Json     @map("bytebot_content")
+  role      Role     @default(ASSISTANT) @map("bytebot_role")
+  createdAt DateTime @default(now()) @map("bytebot_created_at")
+  updatedAt DateTime @updatedAt @map("bytebot_updated_at")
+  taskId    String   @map("bytebot_task_id")
+  summaryId String?  @map("bytebot_summary_id")
+  summary   Summary? @relation(fields: [summaryId], references: [id])
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@index([summaryId], map: "bytebot_messages_bytebot_summary_id_fkey")
+  @@map("bytebot_messages")
+}
+
+model File {
+  id        String   @id @default(uuid()) @map("bytebot_file_id")
+  name      String   @map("bytebot_name")
+  type      String   @map("bytebot_type")
+  size      Int      @map("bytebot_size")
+  data      String   @map("bytebot_data")
+  createdAt DateTime @default(now()) @map("bytebot_created_at")
+  updatedAt DateTime @updatedAt @map("bytebot_updated_at")
+  taskId    String   @map("bytebot_task_id")
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId], map: "bytebot_files_bytebot_task_id_fkey")
+  @@map("bytebot_files")
 }
 
 enum TaskStatus {
@@ -39,84 +105,3 @@ enum TaskType {
   IMMEDIATE
   SCHEDULED
 }
-
-model Task {
-  id            String        @id @default(uuid()) @map("bytebot_task_id")
-  description   String        @map("bytebot_description")
-  type          TaskType      @default(IMMEDIATE) @map("bytebot_type")
-  status        TaskStatus    @default(PENDING) @map("bytebot_status")
-  priority      TaskPriority  @default(MEDIUM) @map("bytebot_priority")
-  control       Role          @default(ASSISTANT) @map("bytebot_control")
-  createdAt     DateTime      @default(now()) @map("bytebot_created_at")
-  createdBy     Role          @default(USER) @map("bytebot_created_by")
-  scheduledFor  DateTime?     @map("bytebot_scheduled_for")
-  updatedAt     DateTime      @updatedAt @map("bytebot_updated_at")
-  executedAt    DateTime?     @map("bytebot_executed_at")
-  completedAt   DateTime?     @map("bytebot_completed_at")
-  queuedAt      DateTime?     @map("bytebot_queued_at")
-  error         String?       @map("bytebot_error")
-  result        Json?        @map("bytebot_result")
-  // Example: 
-  // { "provider": "anthropic", "name": "claude-opus-4-20250514", "title": "Claude Opus 4" }
-  model         Json         @map("bytebot_model")
-  messages      Message[]
-  summaries     Summary[]
-  files         File[]
-
-  @@map("bytebot_tasks")
-}
-
-model Summary {
-  id             String     @id @default(uuid()) @map("bytebot_summary_id")
-  content        String     @map("bytebot_content")
-  createdAt      DateTime   @default(now()) @map("bytebot_created_at")
-  updatedAt      DateTime   @updatedAt @map("bytebot_updated_at")
-  messages       Message[]  // One-to-many relationship: one Summary has many Messages
-
-  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String      @map("bytebot_task_id")
-  
-  // Self-referential relationship
-  parentSummary  Summary?   @relation("SummaryHierarchy", fields: [parentId], references: [id])
-  parentId       String?    @map("bytebot_parent_id")
-  childSummaries Summary[]  @relation("SummaryHierarchy")
-
-  @@map("bytebot_summaries")
-}
-
-model Message {
-  id        String      @id @default(uuid()) @map("bytebot_message_id")
-  // Content field follows Anthropic's content blocks structure
-  // Example: 
-  // [
-  //   {"type": "text", "text": "Hello world"},
-  //   {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "..."}}
-  // ]
-  content   Json        @map("bytebot_content")
-  role      Role        @default(ASSISTANT) @map("bytebot_role")
-  createdAt DateTime    @default(now()) @map("bytebot_created_at")
-  updatedAt DateTime    @updatedAt @map("bytebot_updated_at")
-  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String      @map("bytebot_task_id")
-  summary   Summary?    @relation(fields: [summaryId], references: [id])
-  summaryId String?     @map("bytebot_summary_id") // Optional foreign key to Summary
-
-  @@map("bytebot_messages")
-}
-
-model File {
-  id            String      @id @default(uuid()) @map("bytebot_file_id")
-  name          String      @map("bytebot_name")
-  type          String      @map("bytebot_type") // MIME type
-  size          Int         @map("bytebot_size") // Size in bytes
-  data          String      @map("bytebot_data") // Base64 encoded file data
-  createdAt     DateTime    @default(now()) @map("bytebot_created_at")
-  updatedAt     DateTime    @updatedAt @map("bytebot_updated_at")
-  
-  // Relations
-  task          Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String      @map("bytebot_task_id")
-
-  @@map("bytebot_files")
-}
-

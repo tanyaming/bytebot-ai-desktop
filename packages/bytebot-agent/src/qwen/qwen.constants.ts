@@ -25,6 +25,12 @@ export const QWEN_MODELS: BytebotAgentModel[] = [
     title: 'Qwen Max Long Context',
     contextWindow: 131072,
   },
+  {
+    provider: 'qwen',
+    name: 'qwen-max',
+    title: 'Qwen Max',
+    contextWindow: 131072,
+  },
 ];
 
 // 设置Qwen Turbo为默认模型

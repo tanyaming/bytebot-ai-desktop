@@ -29,7 +29,7 @@ tolerations: []
 affinity: {}
 
 env:
-  DATABASE_URL: ""
+  DATABASE_URL: "mysql://mysqlroot:Htjc2025a@8.137.123.168:3306/testData?charset=utf8mb4"
   BYTEBOT_DESKTOP_BASE_URL: "http://bytebot-desktop:9990"
   BYTEBOT_LLM_PROXY_URL: ""
   # Legacy API key values for backward compatibility
@@ -56,7 +56,7 @@ apiKeys:
     value: ""  # Only used if useExisting is false
 
 config:
-  databaseUrl: "postgresql://postgres:postgres@bytebot-postgresql:5432/bytebotdb"
+  databaseUrl: "mysql://mysqlroot:Htjc2025a@8.137.123.168:3306/testData?"
   bytebotDesktopUrl: "http://bytebot-desktop:9990"
   llmProxyUrl: ""
 
@@ -71,24 +71,15 @@ ingress:
           pathType: ImplementationSpecific
   tls: []
 
+# 使用外部MySQL数据库，不再需要本地PostgreSQL
 postgresql:
-  enabled: true
-  auth:
-    username: postgres
-    password: postgres
-    database: bytebotdb
-  service:
-    port: 5432
-  primary:
-    persistence:
-      enabled: true
-      size: 10Gi
+  enabled: false
 
 externalDatabase:
-  host: ""
-  port: 5432
-  database: bytebotdb
-  username: postgres
-  password: postgres
+  host: "8.137.123.168"
+  port: 3306
+  database: "testData"
+  username: "mysqlroot"
+  password: "Htjc2025a"
   existingSecret: ""
   existingSecretPasswordKey: ""

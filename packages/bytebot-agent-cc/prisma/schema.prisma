@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,7 +7,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum TaskStatus {
+model bytebot_files {
+  bytebot_file_id    String        @id
+  bytebot_name       String
+  bytebot_type       String
+  bytebot_size       Int
+  bytebot_data       String
+  bytebot_created_at DateTime      @default(now())
+  bytebot_updated_at DateTime
+  bytebot_task_id    String
+  bytebot_tasks      bytebot_tasks @relation(fields: [bytebot_task_id], references: [bytebot_task_id], onDelete: Cascade)
+
+  @@index([bytebot_task_id], map: "bytebot_files_bytebot_task_id_fkey")
+}
+
+model bytebot_messages {
+  bytebot_message_id String                        @id
+  bytebot_content    Json
+  bytebot_role       bytebot_messages_bytebot_role @default(ASSISTANT)
+  bytebot_created_at DateTime                      @default(now())
+  bytebot_updated_at DateTime
+  bytebot_task_id    String
+  bytebot_summary_id String?
+  bytebot_summaries  bytebot_summaries?            @relation(fields: [bytebot_summary_id], references: [bytebot_summary_id])
+  bytebot_tasks      bytebot_tasks                 @relation(fields: [bytebot_task_id], references: [bytebot_task_id], onDelete: Cascade)
+
+  @@index([bytebot_summary_id], map: "bytebot_messages_bytebot_summary_id_fkey")
+  @@index([bytebot_task_id, bytebot_created_at])
+}
+
+model bytebot_summaries {
+  bytebot_summary_id      String              @id
+  bytebot_content         String
+  bytebot_created_at      DateTime            @default(now())
+  bytebot_updated_at      DateTime
+  bytebot_task_id         String
+  bytebot_parent_id       String?
+  bytebot_messages        bytebot_messages[]
+  bytebot_summaries       bytebot_summaries?  @relation("bytebot_summariesTobytebot_summaries", fields: [bytebot_parent_id], references: [bytebot_summary_id])
+  other_bytebot_summaries bytebot_summaries[] @relation("bytebot_summariesTobytebot_summaries")
+  bytebot_tasks           bytebot_tasks       @relation(fields: [bytebot_task_id], references: [bytebot_task_id], onDelete: Cascade)
+
+  @@index([bytebot_parent_id], map: "bytebot_summaries_bytebot_parent_id_fkey")
+  @@index([bytebot_task_id], map: "bytebot_summaries_bytebot_task_id_fkey")
+}
+
+model bytebot_tasks {
+  bytebot_task_id       String                           @id
+  bytebot_description   String
+  bytebot_type          bytebot_tasks_bytebot_type       @default(IMMEDIATE)
+  bytebot_status        bytebot_tasks_bytebot_status     @default(PENDING)
+  bytebot_priority      bytebot_tasks_bytebot_priority   @default(MEDIUM)
+  bytebot_control       bytebot_tasks_bytebot_control    @default(ASSISTANT)
+  bytebot_created_at    DateTime                         @default(now())
+  bytebot_created_by    bytebot_tasks_bytebot_created_by @default(USER)
+  bytebot_scheduled_for DateTime?
+  bytebot_updated_at    DateTime
+  bytebot_executed_at   DateTime?
+  bytebot_completed_at  DateTime?
+  bytebot_queued_at     DateTime?
+  bytebot_error         String?
+  bytebot_result        Json?
+  bytebot_model         Json
+  bytebot_files         bytebot_files[]
+  bytebot_messages      bytebot_messages[]
+  bytebot_summaries     bytebot_summaries[]
+}
+
+enum bytebot_tasks_bytebot_type {
+  IMMEDIATE
+  SCHEDULED
+}
+
+enum bytebot_messages_bytebot_role {
+  USER
+  ASSISTANT
+}
+
+enum bytebot_tasks_bytebot_status {
   PENDING
   RUNNING
   NEEDS_HELP
@@ -23,92 +94,19 @@ enum TaskStatus {
   FAILED
 }
 
-enum TaskPriority {
+enum bytebot_tasks_bytebot_priority {
   LOW
   MEDIUM
   HIGH
   URGENT
 }
 
-enum Role {
+enum bytebot_tasks_bytebot_control {
   USER
   ASSISTANT
 }
 
-enum TaskType {
-  IMMEDIATE
-  SCHEDULED
+enum bytebot_tasks_bytebot_created_by {
+  USER
+  ASSISTANT
 }
-
-model Task {
-  id            String        @id @default(uuid())
-  description   String
-  type          TaskType      @default(IMMEDIATE)
-  status        TaskStatus    @default(PENDING)
-  priority      TaskPriority  @default(MEDIUM)
-  control       Role          @default(ASSISTANT)
-  createdAt     DateTime      @default(now())
-  createdBy     Role          @default(USER)
-  scheduledFor  DateTime?
-  updatedAt     DateTime      @updatedAt
-  executedAt    DateTime?
-  completedAt   DateTime?
-  queuedAt      DateTime?
-  error         String?
-  result        Json?
-  // Example: 
-  // { "provider": "anthropic", "name": "claude-opus-4-20250514", "title": "Claude Opus 4" }
-  model         Json
-  messages      Message[]
-  summaries     Summary[]
-  files         File[]
-}
-
-model Summary {
-  id             String     @id @default(uuid())
-  content        String
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  messages       Message[]  // One-to-many relationship: one Summary has many Messages
-
-  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String
-  
-  // Self-referential relationship
-  parentSummary  Summary?   @relation("SummaryHierarchy", fields: [parentId], references: [id])
-  parentId       String?
-  childSummaries Summary[]  @relation("SummaryHierarchy")
-}
-
-model Message {
-  id        String      @id @default(uuid())
-  // Content field follows Anthropic's content blocks structure
-  // Example: 
-  // [
-  //   {"type": "text", "text": "Hello world"},
-  //   {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "..."}}
-  // ]
-  content   Json
-  role      Role @default(ASSISTANT)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  task      Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String
-  summary   Summary?    @relation(fields: [summaryId], references: [id])
-  summaryId String?     // Optional foreign key to Summary
-}
-
-model File {
-  id            String      @id @default(uuid())
-  name          String
-  type          String      // MIME type
-  size          Int         // Size in bytes
-  data          String      // Base64 encoded file data
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  
-  // Relations
-  task          Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId        String
-}
-

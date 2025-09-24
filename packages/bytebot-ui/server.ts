@@ -8,6 +8,17 @@ import dotenv from "dotenv";
 // Load environment variables
 dotenv.config();
 
+// 全局错误处理
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.message, err.code);
+  // 不要退出进程，只是记录错误
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // 不要退出进程，只是记录错误
+});
+
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
 const port = parseInt(process.env.PORT || "9992", 10);
@@ -24,7 +35,14 @@ app
     const handle = app.getRequestHandler();
     const nextUpgradeHandler = app.getUpgradeHandler();
 
-    const vncProxy = createProxyServer({ changeOrigin: true, ws: true });
+    const vncProxy = createProxyServer({ 
+      changeOrigin: true, 
+      ws: true,
+      timeout: 60000, // 增加超时时间到60秒
+      proxyTimeout: 60000,
+      followRedirects: true,
+      secure: false, // 如果是自签名证书，设置为false
+    });
 
     const expressApp = express();
     const server = createServer(expressApp);
@@ -53,8 +71,30 @@ app
       req.url =
         targetUrl.pathname +
         (req.url?.replace(/^\/api\/proxy\/websockify/, "") || "");
+      
+      // 添加错误处理
+      req.on('error', (err) => {
+        console.log('Request error:', err.message);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Proxy request failed' });
+        }
+      });
+      
+      res.on('error', (err) => {
+        console.log('Response error:', err.message);
+      });
+      
       vncProxy.web(req, res, {
         target: `${targetUrl.protocol}//${targetUrl.host}`,
+        timeout: 60000, // 增加超时时间到60秒
+        proxyTimeout: 60000,
+      }, (err) => {
+        if (err) {
+          console.log('Proxy error:', err.message);
+          if (!res.headersSent) {
+            res.status(502).json({ error: 'Bad Gateway' });
+          }
+        }
       });
     });
 
@@ -78,8 +118,33 @@ app
           targetUrl.pathname +
           (request.url?.replace(/^\/api\/proxy\/websockify/, "") || "");
         console.log("Proxying websockify upgrade request: ", request.url);
+        
+        // 改进错误处理
+        socket.on('error', (err) => {
+          console.log('WebSocket proxy error:', err.message, err.code);
+          // 不要抛出未捕获的异常
+        });
+        
+        socket.on('close', (code, reason) => {
+          console.log(`WebSocket connection closed: ${code} ${reason}`);
+        });
+        
+        // 添加超时处理
+        const connectionTimeout = setTimeout(() => {
+          if (!socket.destroyed) {
+            console.log('WebSocket connection timeout, closing socket');
+            socket.destroy();
+          }
+        }, 60000);
+        
+        socket.on('close', () => {
+          clearTimeout(connectionTimeout);
+        });
+        
         return vncProxy.ws(request, socket as any, head, {
           target: `${targetUrl.protocol}//${targetUrl.host}`,
+          timeout: 60000,
+          proxyTimeout: 60000,
         });
       }
 

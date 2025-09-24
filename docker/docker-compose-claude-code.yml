@@ -20,20 +20,8 @@ services:
     networks:
       - bytebot-network
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: bytebot-postgres
-    restart: unless-stopped
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=bytebotdb
-    networks:
-      - bytebot-network
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  # 使用外部MySQL数据库，不再需要本地PostgreSQL容器
+  # MySQL连接信息: mysql://mysqlroot:Htjc2025a@8.137.123.168:3306/testData?charset=utf8mb4
 
   bytebot-agent-cc:
     build:
@@ -44,11 +32,10 @@ services:
     ports:
       - "9991:9991"
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/bytebotdb}
+      - DATABASE_URL=${DATABASE_URL:-mysql://mysqlroot:Htjc2025a@8.137.123.168:3306/testData?charset=utf8mb4}
       - BYTEBOT_DESKTOP_BASE_URL=${BYTEBOT_DESKTOP_BASE_URL:-http://bytebot-desktop:9990}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    depends_on:
-      - postgres
+    # 不再依赖本地PostgreSQL，使用外部MySQL
     networks:
       - bytebot-network
 
@@ -78,5 +65,6 @@ networks:
   bytebot-network:
     driver: bridge
 
-volumes:
-  postgres_data:
+# 不再需要PostgreSQL数据卷
+# volumes:
+#   postgres_data:

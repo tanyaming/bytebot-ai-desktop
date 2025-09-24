@@ -74,6 +74,10 @@ export class MessagesService {
     // Calculate offset based on page and limit
     const offset = (page - 1) * limit;
 
+    // Limit the maximum number of messages to prevent memory issues
+    const maxLimit = Math.min(limit, 100);
+    const maxOffset = Math.min(offset, 10000); // Prevent deep pagination
+
     return this.prisma.message.findMany({
       where: {
         taskId,
@@ -81,8 +85,17 @@ export class MessagesService {
       orderBy: {
         createdAt: 'asc',
       },
-      take: limit,
-      skip: offset,
+      take: maxLimit,
+      skip: maxOffset,
+      select: {
+        id: true,
+        content: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+        taskId: true,
+        summaryId: true,
+      },
     });
   }
 

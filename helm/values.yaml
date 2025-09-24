@@ -1,18 +1,10 @@
 global:
   storageClass: ""
   
+# 使用外部MySQL数据库，不再需要本地PostgreSQL
+# MySQL连接信息: mysql://mysqlroot:Htjc2025a@8.137.123.168:3306/testData?charset=utf8mb4
 postgresql:
-  enabled: true
-  fullnameOverride: "bytebot-postgresql"
-  auth:
-    username: postgres
-    password: postgres
-    database: bytebotdb
-  service:
-    port: 5432
-  persistence:
-    enabled: true
-    size: 10Gi
+  enabled: false
 
 bytebot-desktop:
   fullnameOverride: "bytebot-desktop"
@@ -46,11 +38,12 @@ bytebot-agent:
   postgresql:
     enabled: false
   externalDatabase:
-    host: "bytebot-postgresql"
-    port: 5432
-    database: bytebotdb
-    username: postgres
-    password: postgres
+    # 使用外部MySQL数据库
+    host: "8.137.123.168"
+    port: 3306
+    database: "testData"
+    username: "mysqlroot"
+    password: "Htjc2025a"
   # Legacy API key configuration (for backward compatibility)
   env:
     ANTHROPIC_API_KEY: ""

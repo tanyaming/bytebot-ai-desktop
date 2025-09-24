@@ -33,8 +33,9 @@ bytebot-agent:
     GEMINI_API_KEY: ""
 
 # All other services remain the same
+# 使用外部MySQL数据库，不再需要本地PostgreSQL
 postgresql:
-  enabled: true
+  enabled: false
 
 bytebot-desktop:
   enabled: true

@@ -59,7 +59,16 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => {
         setModels(data);
-        if (data.length > 0) setSelectedModel(data[0]);
+        // 优先选择Qwen Max模型，如果没有则选择Qwen Turbo，最后选择第一个可用模型
+        const qwenMaxModel = data.find((m: Model) => m.name === 'qwen-max');
+        const qwenModel = data.find((m: Model) => m.provider === 'qwen');
+        if (qwenMaxModel) {
+          setSelectedModel(qwenMaxModel);
+        } else if (qwenModel) {
+          setSelectedModel(qwenModel);
+        } else if (data.length > 0) {
+          setSelectedModel(data[0]);
+        }
       })
       .catch((err) => console.error("Failed to load models", err));
   }, []);

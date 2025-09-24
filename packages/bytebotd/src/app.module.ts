@@ -13,7 +13,7 @@ import { BytebotMcpModule } from './mcp';
       isGlobal: true, // Explicitly makes it globally available
     }),
     ServeStaticModule.forRoot({
-      rootPath: '/opt/noVNC',
+      rootPath: process.env.NODE_ENV === 'production' ? '/opt/noVNC' : './noVNC',
       serveRoot: '/novnc',
     }),
     ComputerUseModule,
