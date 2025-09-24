@@ -29,6 +29,13 @@ app
     const expressApp = express();
     const server = createServer(expressApp);
 
+    // API proxy for backend requests
+    const apiProxy = createProxyMiddleware({
+      target: BYTEBOT_AGENT_BASE_URL,
+      changeOrigin: true,
+      pathRewrite: { "^/api": "" },
+    });
+
     // WebSocket proxy for Socket.IO connections to backend
     const tasksProxy = createProxyMiddleware({
       target: BYTEBOT_AGENT_BASE_URL,
@@ -37,6 +44,7 @@ app
     });
 
     // Apply HTTP proxies
+    expressApp.use("/api", apiProxy);
     expressApp.use("/api/proxy/tasks", tasksProxy);
     expressApp.use("/api/proxy/websockify", (req, res) => {
       console.log("Proxying websockify request");
