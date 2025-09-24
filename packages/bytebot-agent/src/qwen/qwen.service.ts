@@ -179,41 +179,27 @@ export class QwenService implements BytebotAgentService {
             }
             case MessageContentType.ToolResult: {
               const toolResult = block as ToolResultContentBlock;
-              if (
-                toolResult.content.every(
-                  (c) => c.type === MessageContentType.Image,
-                )
-              ) {
+              // 合并所有tool result内容到一个消息中
+              let combinedContent = '';
+              let hasImage = false;
+              
+              toolResult.content.forEach((content) => {
+                if (content.type === MessageContentType.Text) {
+                  combinedContent += content.text + '\n';
+                }
+                if (content.type === MessageContentType.Image) {
+                  hasImage = true;
+                  combinedContent += '[Screenshot provided]\n';
+                }
+              });
+              
+              if (combinedContent.trim()) {
                 chatMessages.push({
                   role: 'tool',
                   tool_call_id: toolResult.tool_use_id,
-                  content: 'screenshot',
+                  content: combinedContent.trim(),
                 } as any);
               }
-              toolResult.content.forEach((content) => {
-                if (content.type === MessageContentType.Text) {
-                  chatMessages.push({
-                    role: 'tool',
-                    tool_call_id: toolResult.tool_use_id,
-                    content: content.text,
-                  } as any);
-                }
-                if (content.type === MessageContentType.Image) {
-                  chatMessages.push({
-                    role: 'user',
-                    content: [
-                      { type: 'text', text: 'Screenshot' },
-                      {
-                        type: 'image_url',
-                        image_url: {
-                          url: `data:${content.source.media_type};base64,${content.source.data}`,
-                          detail: 'high',
-                        },
-                      },
-                    ],
-                  } as any);
-                }
-              });
               break;
             }
           }
