@@ -19,6 +19,7 @@ import { ANTHROPIC_MODELS } from '../anthropic/anthropic.constants';
 import { OPENAI_MODELS } from '../openai/openai.constants';
 import { GOOGLE_MODELS } from '../google/google.constants';
 import { BytebotAgentModel } from 'src/agent/agent.types';
+import { QWEN_MODELS } from '../qwen/qwen.constants';
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
@@ -26,10 +27,13 @@ const openaiApiKey = process.env.OPENAI_API_KEY;
 
 const proxyUrl = process.env.BYTEBOT_LLM_PROXY_URL;
 
+const qwenApiKey = process.env.QWEN_API_KEY;
+
 const models = [
   ...(anthropicApiKey ? ANTHROPIC_MODELS : []),
   ...(openaiApiKey ? OPENAI_MODELS : []),
   ...(geminiApiKey ? GOOGLE_MODELS : []),
+  ...(qwenApiKey ? QWEN_MODELS : []),
 ];
 
 @Controller('tasks')
